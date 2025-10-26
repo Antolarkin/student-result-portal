@@ -1,0 +1,87 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: student-result-portal
+  labels:
+    app: student-result-portal
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: student-result-portal
+  template:
+    metadata:
+      labels:
+        app: student-result-portal
+    spec:
+      containers:
+      - name: student-result-portal
+        image: student-result-portal:latest
+        ports:
+        - containerPort: 3000
+        env:
+        - name: PORT
+          value: "3000"
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 3000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 3000
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        volumeMounts:
+        - name: data-volume
+          mountPath: /app/data
+      volumes:
+      - name: data-volume
+        hostPath:
+          path: /data/student-portal
+          type: DirectoryOrCreate
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: student-result-portal-service
+  labels:
+    app: student-result-portal
+spec:
+  selector:
+    app: student-result-portal
+  ports:
+  - port: 3000
+    targetPort: 3000
+    protocol: TCP
+  type: LoadBalancer
+
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: student-result-portal-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  rules:
+  - host: student-portal.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: student-result-portal-service
+            port:
+              number: 3000

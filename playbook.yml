@@ -1,0 +1,63 @@
+---
+- name: Provision Student Result Portal Infrastructure
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  vars:
+    app_name: student-result-portal
+    app_port: 3000
+    docker_image: "{{ app_name }}:latest"
+    container_name: "{{ app_name }}_container"
+
+  tasks:
+    - name: Ensure Docker is running
+      service:
+        name: docker
+        state: started
+      become: true
+
+    - name: Build Docker image
+      docker_image:
+        name: "{{ docker_image }}"
+        source: build
+        build:
+          path: "{{ playbook_dir }}"
+          dockerfile: Dockerfile
+        state: present
+
+    - name: Stop and remove existing container (if exists)
+      docker_container:
+        name: "{{ container_name }}"
+        state: absent
+
+    - name: Run Docker container
+      docker_container:
+        name: "{{ container_name }}"
+        image: "{{ docker_image }}"
+        state: started
+        restart_policy: unless-stopped
+        ports:
+          - "{{ app_port }}:{{ app_port }}"
+        volumes:
+          - "{{ playbook_dir }}/data:/app/data"
+        healthcheck:
+          test: ["CMD", "curl", "-f", "http://localhost:{{ app_port }}/health"]
+          interval: 30s
+          timeout: 10s
+          retries: 3
+          start_period: 40s
+
+    - name: Wait for application to be healthy
+      uri:
+        url: "http://localhost:{{ app_port }}/health"
+        method: GET
+        status_code: 200
+      register: health_check
+      until: health_check.status == 200
+      retries: 10
+      delay: 5
+
+    - name: Display deployment status
+      debug:
+        msg: "Student Result Portal deployed successfully at http://localhost:{{ app_port }}"
