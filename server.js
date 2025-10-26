@@ -130,6 +130,38 @@ app.get('/api/students/:id/results', (req, res) => {
   });
 });
 
+app.delete('/students/:id', (req, res) => {
+  const studentId = req.params.id;
+  db.run('DELETE FROM results WHERE student_id = ?', [studentId], function(err) {
+    if (err) {
+      res.status(500).json({ error: err.message });
+      return;
+    }
+    db.run('DELETE FROM students WHERE id = ?', [studentId], function(err) {
+      if (err) {
+        res.status(500).json({ error: err.message });
+        return;
+      }
+      res.json({ message: 'Student and their results deleted successfully' });
+    });
+  });
+});
+
+app.delete('/students/:studentId/results/:resultId', (req, res) => {
+  const { studentId, resultId } = req.params;
+  db.run('DELETE FROM results WHERE id = ? AND student_id = ?', [resultId, studentId], function(err) {
+    if (err) {
+      res.status(500).json({ error: err.message });
+      return;
+    }
+    if (this.changes === 0) {
+      res.status(404).json({ error: 'Result not found' });
+      return;
+    }
+    res.json({ message: 'Result deleted successfully' });
+  });
+});
+
 app.get('/health', (req, res) => {
   res.json({ status: 'OK', timestamp: new Date().toISOString() });
 });

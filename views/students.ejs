@@ -34,6 +34,7 @@
                         </p>
                         <a href="/students/<%= student.id %>/results" class="btn btn-outline-primary">View Results</a>
                         <a href="/students/<%= student.id %>/results/new" class="btn btn-outline-success">Add Result</a>
+                        <button class="btn btn-outline-danger btn-sm delete-student" data-student-id="<%= student.id %>" data-student-name="<%= student.name %>">Delete</button>
                     </div>
                 </div>
             </div>
@@ -42,5 +43,34 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const deleteButtons = document.querySelectorAll('.delete-student');
+
+            deleteButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    const studentId = this.getAttribute('data-student-id');
+                    const studentName = this.getAttribute('data-student-name');
+
+                    if (confirm(`Are you sure you want to delete student "${studentName}" and all their results? This action cannot be undone.`)) {
+                        fetch(`/students/${studentId}`, {
+                            method: 'DELETE',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            }
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            alert(data.message);
+                            location.reload();
+                        })
+                        .catch(error => {
+                            alert('Error deleting student: ' + error.message);
+                        });
+                    }
+                });
+            });
+        });
+    </script>
 </body>
 </html>
