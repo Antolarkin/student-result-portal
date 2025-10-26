@@ -136,7 +136,12 @@ app.get('/health', (req, res) => {
 
 // New endpoint to demonstrate Git workflow
 app.get('/demo', (req, res) => {
-  res.json({ message: 'This is a demo endpoint added to demonstrate Git workflow', timestamp: new Date().toISOString() });
+  res.json({
+    message: 'This is a demo endpoint added to demonstrate Git workflow',
+    timestamp: new Date().toISOString(),
+    version: '1.0.0',
+    status: 'active'
+  });
 });
 
 function calculateGrade(marks) {
