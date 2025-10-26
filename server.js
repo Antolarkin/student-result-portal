@@ -134,6 +134,11 @@ app.get('/health', (req, res) => {
   res.json({ status: 'OK', timestamp: new Date().toISOString() });
 });
 
+// New endpoint to demonstrate Git workflow
+app.get('/demo', (req, res) => {
+  res.json({ message: 'This is a demo endpoint added to demonstrate Git workflow' });
+});
+
 function calculateGrade(marks) {
   if (marks >= 90) return 'A+';
   if (marks >= 80) return 'A';
