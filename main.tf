@@ -1,5 +1,9 @@
 terraform {
   required_providers {
+    azurerm = {
+      source  = "hashicorp/azurerm"
+      version = "~> 3.0"
+    }
     docker = {
       source  = "kreuzwerker/docker"
       version = "~> 3.0"
@@ -7,55 +11,57 @@ terraform {
   }
 }
 
+provider "azurerm" {
+  features {}
+  skip_provider_registration = true
+}
+
 provider "docker" {
   host = "unix:///var/run/docker.sock"
 }
 
-resource "docker_image" "student_result_portal" {
-  name = "student-result-portal:latest"
-  build {
-    context    = "."
-    dockerfile = "Dockerfile"
+resource "azurerm_resource_group" "student_result_portal" {
+  name     = "student-result-portal-rg"
+  location = "East US"
+}
+
+resource "azurerm_container_registry" "acr" {
+  name                = "studentresultportalacr"
+  resource_group_name = azurerm_resource_group.student_result_portal.name
+  location            = azurerm_resource_group.student_result_portal.location
+  sku                 = "Basic"
+  admin_enabled       = true
+}
+
+resource "azurerm_kubernetes_cluster" "aks" {
+  name                = "student-result-portal-aks"
+  location            = azurerm_resource_group.student_result_portal.location
+  resource_group_name = azurerm_resource_group.student_result_portal.name
+  dns_prefix          = "studentportal"
+
+  default_node_pool {
+    name       = "default"
+    node_count = 1
+    vm_size    = "Standard_DS2_v2"
+  }
+
+  identity {
+    type = "SystemAssigned"
   }
 }
 
-resource "docker_container" "student_result_portal" {
-  name  = "student-result-portal"
-  image = docker_image.student_result_portal.image_id
-
-  ports {
-    internal = 3000
-    external = 3000
-  }
-
-  volumes {
-    host_path      = "${path.cwd}/data"
-    container_path = "/app/data"
-  }
-
-  restart = "unless-stopped"
-
-  healthcheck {
-    test     = ["CMD", "curl", "-f", "http://localhost:3000/health"]
-    interval = "30s"
-    timeout  = "10s"
-    retries  = 3
-  }
-
-  depends_on = [docker_image.student_result_portal]
+output "acr_login_server" {
+  description = "ACR login server"
+  value       = azurerm_container_registry.acr.login_server
 }
 
-output "container_id" {
-  description = "ID of the Docker container"
-  value       = docker_container.student_result_portal.id
+output "aks_cluster_name" {
+  description = "AKS cluster name"
+  value       = azurerm_kubernetes_cluster.aks.name
 }
 
-output "container_name" {
-  description = "Name of the Docker container"
-  value       = docker_container.student_result_portal.name
-}
-
-output "external_port" {
-  description = "External port for the application"
-  value       = docker_container.student_result_portal.ports[0].external
+output "aks_kube_config" {
+  description = "AKS kube config"
+  value       = azurerm_kubernetes_cluster.aks.kube_config_raw
+  sensitive   = true
 }
